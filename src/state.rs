@@ -12,4 +12,5 @@ pub struct LysergicTokenizerState {
     pub underlying_mint: Pubkey,
     pub underlying_vault: Pubkey,
     pub expiry_date: i64,
+    pub fixed_apy: u64,
 }

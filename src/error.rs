@@ -18,7 +18,7 @@ pub enum LysergicTokenizerError {
     #[error("Tokenizer Not Initialized")]
     TokenizerNotInitialized,
     #[error("Incorrect Account Address")]
-    IncorrectAccountAddress,
+    InvalidUserAccount,
     #[error("Incorrect Tokenizer Address")]
     IncorrectTokenizerAddress,
     #[error("Invalid Expiry Date")]
@@ -31,6 +31,10 @@ pub enum LysergicTokenizerError {
     IncorrectPrincipalMintAddress,
     #[error("Incorrect Yield Mint Address")]
     IncorrectYieldMintAddress,
+    #[error("Expiry Date Has Elapsed")]
+    ExpiryDateElapsed,
+    #[error("Expiry Date Has Not Elapsed")]
+    ExpiryDateNotElapsed,
 }
 
 

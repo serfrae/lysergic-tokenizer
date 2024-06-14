@@ -1,14 +1,15 @@
 use {
-    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     crate::Expiry,
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
         pubkey::Pubkey,
         system_program,
     },
-    spl_associated_token_account, spl_token,
+    spl_token,
 };
+
 
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema, Debug, PartialEq)]
 pub enum LysergicTokenizerInstruction {
@@ -33,6 +34,8 @@ pub enum LysergicTokenizerInstruction {
         yield_token_mint: Pubkey,
         /// The expiry of the LysergicTokenizer
         expiry: Expiry,
+        /// The fixed APY of the Principal token
+        fixed_apy: u64,
     },
 
     /// Initializes the principal and yield token mints
@@ -73,6 +76,8 @@ pub enum LysergicTokenizerInstruction {
         yield_token_mint: Pubkey,
         /// The expiry of the LysergicTokenizer
         expiry: Expiry,
+        /// The fixed APY of the Principal token
+        fixed_apy: u64,
     },
 
     /// Deposits the underlying token into the LysergicTokenizer
@@ -98,7 +103,7 @@ pub enum LysergicTokenizerInstruction {
     /// 2. `[writable, signer]` User account
     /// 3. `[writable]` User principal token account
     /// 4. `[]` Token program
-    /// 5. `[]` Associated token account program
+    /// 5. `[]` System program
     TokenizePrincipal {
         /// The amount of the underlying token to tokenize
         amount: u64,
@@ -112,6 +117,7 @@ pub enum LysergicTokenizerInstruction {
     /// 2. `[writable, signer]` User account
     /// 3. `[writable]` User yield token account
     /// 4. `[]` Token program
+    /// 5. `[]` System program
     TokenizeYield {
         /// The amount of the underlying token to tokenize
         amount: u64,
@@ -130,7 +136,7 @@ pub enum LysergicTokenizerInstruction {
     /// 6. `[writable]` User principal token account
     /// 7. `[writable]` User yield token account
     /// 8. `[]` Token program
-    /// 9. `[]` Associated token account program
+    /// 9. `[]` System program
     DepositAndTokenize {
         /// The amount of the underlying token to deposit
         amount: u64,
@@ -150,7 +156,10 @@ pub enum LysergicTokenizerInstruction {
     /// 7. `[writable]` User principal token account
     /// 8. `[writable]` User yield token account
     /// 9. `[]` Token program
-    RedeemPrincipalAndYield { amount: u64 },
+    /// 10. `[]` System program
+    RedeemPrincipalAndYield {
+        amount: u64,
+    },
 
     /// Redeems the principal token for the underlying token
     ///
@@ -164,24 +173,10 @@ pub enum LysergicTokenizerInstruction {
     /// 5. `[writable]` User underlying token account
     /// 7. `[writable]` User principal token account
     /// 8. `[]` Token program
-    /// 9. `[]` Associated token account program
-    RedeemPrincipalOnly {
+    /// 9. `[]` System program
+    RedeemMaturePrincipal {
         /// The amount of the principal token to redeem
         principal_amount: u64,
-    },
-
-    /// Burns the principal token
-    ///
-    /// Accounts expected:
-    ///
-    /// 0. `[writable]` LysergicTokenizer account
-    /// 1. `[writable]` Principal token mint account
-    /// 2. `[writable, signer]` User account
-    /// 3. `[writable]` User principal token account
-    /// 4. `[]` Token program
-    BurnPrincipalToken {
-        /// The amount of the principal token to burn
-        amount: u64,
     },
 
     /// Claims the yield
@@ -195,25 +190,51 @@ pub enum LysergicTokenizerInstruction {
     /// 4. `[writable]` User underlying token account
     /// 5. `[writable]` User yield token account
     /// 6. `[]` Token program
-    /// 7. `[]` Associated token account program
+    /// 7. `[]` System program
     ClaimYield {
         /// The amount of the underlying token to claim
         yield_amount: u64,
     },
 
-    /// Burns the yield token
+    /// Terminates the LysergicTokenizer and Mints
     ///
     /// Accounts expected:
     ///
     /// 0. `[writable]` LysergicTokenizer account
-    /// 1. `[writable]` Yield token mint account
-    /// 2. `[writable, signer]` User account
-    /// 3. `[writable]` User yield token account
+    /// 1. `[writable, signer]` Authority
+    /// 2. `[writable]` Underlying vault account
+    /// 3. `[writable]` Principal token mint account
+    /// 4. `[writable]` Yield token mint account
+    /// 5. `[]` Token program
+    /// 6. `[]` System program
+    Terminate,
+
+    /// Terminates the LysergicTokenizer
+    /// Should only be called AFTER the mints have been terminated
+    /// as the tokenizer is the owner of the mints
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[writable]` LysergicTokenizer account
+    /// 1. `[writable, signer]` Authority
+    /// 2. `[writable]` Underlying vault account
+    /// 3. `[]` Token Program
+    /// 4. `[]` System Program
+    TerminateLysergicTokenizer,
+
+    /// Terminates the Mints associated with the LysergicTokenizer
+    /// This function cannot be called unless the LysergicTokenizer HAS NOT
+    /// been terminated as the tokenizer itself is the owner of the mints
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[writable]` LysergicTokenizer account
+    /// 1. `[writable, signer]` Authority
+    /// 2. `[writable]` Principal token mint account
+    /// 3. `[writable]` Yield token mint account
     /// 4. `[]` Token program
-    BurnYieldToken {
-        /// The amount of the yield token to burn
-        amount: u64,
-    },
+    /// 5. `[]` System program
+    TerminateMints,
 }
 
 /// Creates an `InitializeLysergicTokenizer` instruction
@@ -225,6 +246,7 @@ pub fn init_lysergic_tokenizer(
     prinicpal_token_mint: &Pubkey,
     yield_token_mint: &Pubkey,
     expiry: Expiry,
+    fixed_apy: u64,
 ) -> Result<Instruction, ProgramError> {
     Ok(Instruction::new_with_borsh(
         crate::id(),
@@ -234,6 +256,7 @@ pub fn init_lysergic_tokenizer(
             principal_token_mint: *prinicpal_token_mint,
             yield_token_mint: *yield_token_mint,
             expiry,
+            fixed_apy,
         },
         vec![
             AccountMeta::new(*lysergic_tokenizer, false),
@@ -280,6 +303,7 @@ pub fn init_tokenizer_and_mints(
     principal_token_mint: &Pubkey,
     yield_token_mint: &Pubkey,
     expiry: Expiry,
+    fixed_apy: u64,
 ) -> Result<Instruction, ProgramError> {
     Ok(Instruction::new_with_borsh(
         crate::id(),
@@ -289,6 +313,7 @@ pub fn init_tokenizer_and_mints(
             principal_token_mint: *principal_token_mint,
             yield_token_mint: *yield_token_mint,
             expiry,
+            fixed_apy,
         },
         vec![
             AccountMeta::new(*lysergic_tokenizer, false),
@@ -320,7 +345,6 @@ pub fn deposit_underlying(
             AccountMeta::new(*user, true),
             AccountMeta::new(*user_underlying_token_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
         ],
     ))
 }
@@ -342,7 +366,7 @@ pub fn tokenize_principal(
             AccountMeta::new(*user, true),
             AccountMeta::new(*user_principal_token_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
     ))
 }
@@ -364,6 +388,7 @@ pub fn tokenize_yield(
             AccountMeta::new(*user, true),
             AccountMeta::new(*user_yield_token_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
     ))
 }
@@ -393,13 +418,13 @@ pub fn deposit_and_tokenize(
             AccountMeta::new(*user_principal_token_account, false),
             AccountMeta::new(*user_yield_token_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
     ))
 }
 
-/// Creates a `RedeemPrincipalOnly` instruction
-pub fn redeem_principal_only(
+/// Creates a `RedeemPrincipal` instruction
+pub fn redeem_mature_principal(
     lysergic_tokenizer: &Pubkey,
     underlying_vault: &Pubkey,
     underlying_mint: &Pubkey,
@@ -411,7 +436,9 @@ pub fn redeem_principal_only(
 ) -> Result<Instruction, ProgramError> {
     Ok(Instruction::new_with_borsh(
         crate::id(),
-        &LysergicTokenizerInstruction::RedeemPrincipalOnly { principal_amount },
+        &LysergicTokenizerInstruction::RedeemMaturePrincipal {
+            principal_amount,
+        },
         vec![
             AccountMeta::new(*lysergic_tokenizer, false),
             AccountMeta::new(*underlying_vault, false),
@@ -421,7 +448,7 @@ pub fn redeem_principal_only(
             AccountMeta::new(*user_underlying_token_account, false),
             AccountMeta::new(*user_principal_token_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
     ))
 }
@@ -429,10 +456,10 @@ pub fn redeem_principal_only(
 /// Creates a `RedeemPrincipalAndYield` instruction
 pub fn redeem_principal_and_yield(
     lysergic_tokenizer: &Pubkey,
-    yield_token_mint: &Pubkey,
     underlying_vault: &Pubkey,
     underlying_mint: &Pubkey,
     principal_token_mint: &Pubkey,
+    yield_token_mint: &Pubkey,
     user: &Pubkey,
     user_underlying_token_account: &Pubkey,
     user_principal_token_account: &Pubkey,
@@ -441,7 +468,9 @@ pub fn redeem_principal_and_yield(
 ) -> Result<Instruction, ProgramError> {
     Ok(Instruction::new_with_borsh(
         crate::id(),
-        &LysergicTokenizerInstruction::RedeemPrincipalAndYield { amount },
+        &LysergicTokenizerInstruction::RedeemPrincipalAndYield {
+            amount,
+        },
         vec![
             AccountMeta::new(*lysergic_tokenizer, false),
             AccountMeta::new(*underlying_vault, false),
@@ -453,6 +482,7 @@ pub fn redeem_principal_and_yield(
             AccountMeta::new(*user_principal_token_account, false),
             AccountMeta::new(*user_yield_token_account, false),
             AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
     ))
 }
@@ -482,45 +512,62 @@ pub fn claim_yield(
     ))
 }
 
-/// Creates a `BurnPrincipalToken` instruction
-pub fn burn_principal_token(
+pub fn terminate(
     lysergic_tokenizer: &Pubkey,
+    authority: &Pubkey,
+    underlying_vault: &Pubkey,
     principal_token_mint: &Pubkey,
-    user: &Pubkey,
-    user_principal_token_account: &Pubkey,
-    amount: u64,
+    yield_token_mint: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     Ok(Instruction::new_with_borsh(
         crate::id(),
-        &LysergicTokenizerInstruction::BurnPrincipalToken { amount },
+        &LysergicTokenizerInstruction::Terminate,
         vec![
             AccountMeta::new(*lysergic_tokenizer, false),
+            AccountMeta::new(*authority, true),
+            AccountMeta::new(*underlying_vault, false),
             AccountMeta::new(*principal_token_mint, false),
-            AccountMeta::new(*user, true),
-            AccountMeta::new(*user_principal_token_account, false),
+            AccountMeta::new(*yield_token_mint, false),
             AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
     ))
 }
 
-/// Creates a `BurnYieldToken` instruction
-pub fn burn_yield_token(
+pub fn terminate_lysergic_tokenizer(
     lysergic_tokenizer: &Pubkey,
-    yield_token_mint: &Pubkey,
-    user: &Pubkey,
-    user_yield_token_account: &Pubkey,
-    amount: u64,
+    authority: &Pubkey,
+    underlying_vault: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     Ok(Instruction::new_with_borsh(
         crate::id(),
-        &LysergicTokenizerInstruction::BurnYieldToken { amount },
+        &LysergicTokenizerInstruction::TerminateLysergicTokenizer,
         vec![
             AccountMeta::new(*lysergic_tokenizer, false),
-            AccountMeta::new(*yield_token_mint, false),
-            AccountMeta::new(*user, true),
-            AccountMeta::new(*user_yield_token_account, false),
+            AccountMeta::new(*authority, true),
+            AccountMeta::new(*underlying_vault, false),
             AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
+        ],
+    ))
+}
+
+pub fn terminate_mints(
+    lysergic_tokenizer: &Pubkey,
+    authority: &Pubkey,
+    principal_token_mint: &Pubkey,
+    yield_token_mint: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    Ok(Instruction::new_with_borsh(
+        crate::id(),
+        &LysergicTokenizerInstruction::TerminateMints,
+        vec![
+            AccountMeta::new(*lysergic_tokenizer, false),
+            AccountMeta::new(*authority, true),
+            AccountMeta::new(*principal_token_mint, false),
+            AccountMeta::new(*yield_token_mint, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
     ))
 }
