@@ -11,41 +11,38 @@ use {
         program_error::ProgramError,
     },
     borsh::{BorshSerialize, BorshSchema, BorshDeserialize},
-    chrono::{Utc, Duration, NaiveDateTime},
 };
 
 declare_id!("LSDjBzV1CdC4zeXETyLnoUddeBeQAvXXRo49j8rSguH");
 
 // Generate the tokenizer address
-pub fn get_tokenizer_address(program_id: &Pubkey, underlying_mint: &Pubkey, expiry_date: i64) -> Pubkey {
-    let seeds = &[&underlying_mint.to_bytes()[..], &expiry_date.to_le_bytes()];
-    let (tokenizer_key, _) = Pubkey::find_program_address(seeds, program_id);
-    tokenizer_key
+pub fn get_tokenizer_address(underlying_mint: &Pubkey, expiry_date: i64) -> (Pubkey, u8) {
+    let seeds = &[b"tokenizer", &underlying_mint.to_bytes()[..], &expiry_date.to_le_bytes()];
+    let (tokenizer_key, bump) = Pubkey::find_program_address(seeds, &crate::id());
+    (tokenizer_key, bump)
 }
 
 // Generate the principal mint address
 pub fn get_principal_mint_address(
-    program_id: &Pubkey,
-    tokenizer_address: &Pubkey,
+    underlying_mint: &Pubkey,
 ) -> Pubkey {
     let seeds = &[
-        &tokenizer_address.to_bytes()[..],
+        &underlying_mint.to_bytes()[..],
         b"principal",
     ];
-    let (principal_mint_key, _) = Pubkey::find_program_address(seeds, program_id);
+    let (principal_mint_key, _) = Pubkey::find_program_address(seeds, &crate::id());
     principal_mint_key
 }
 
 // Generate the yield mint address
 pub fn get_yield_mint_address(
-    program_id: &Pubkey,
-    tokenizer_address: &Pubkey,
+    underlying_mint: &Pubkey,
 ) -> Pubkey {
     let seeds = &[
-        &tokenizer_address.to_bytes()[..],
+        &underlying_mint.to_bytes()[..],
         b"yield",
     ];
-    let (yield_mint_key, _) = Pubkey::find_program_address(seeds, program_id);
+    let (yield_mint_key, _) = Pubkey::find_program_address(seeds, &crate::id());
     yield_mint_key
 }
 
@@ -77,13 +74,11 @@ impl Expiry {
     // Handling a `None` expiry date is the responsibility of the calling program
     // since this function is used both on-chain and off-chain and thus requires different
     // methods to handle the `None` case in each context.
-    pub fn to_expiry_date(&self) -> Option<i64> {
-        let now = Utc::now();
+    pub fn to_expiry_date(&self, ts: i64) -> Option<i64> {
         let expiry_seconds = self.to_seconds();
-        let expiry_duration = Duration::seconds(expiry_seconds);
-        let expiry_date = now + expiry_duration;
-        let expiry_date: Option<NaiveDateTime> = expiry_date.date_naive().and_hms_opt(0,0,0);
-        Some(expiry_date?.and_utc().timestamp())
+        let expiry_timestamp = ts + expiry_seconds;
+        let days = expiry_timestamp / (24 * 60 * 60);
+        Some(days * 24 * 60 * 60)
     }
 }
 

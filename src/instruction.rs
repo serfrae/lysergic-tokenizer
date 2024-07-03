@@ -23,8 +23,6 @@ pub enum LysergicTokenizerInstruction {
 	/// 4. `[]` Token program
 	/// 5. `[]` System program
 	InitializeLysergicTokenizer {
-		/// The public key of the underlying vault
-		underlying_vault: Pubkey,
 		/// The public key of the underlying mint
 		underlying_mint: Pubkey,
 		/// The public key of the principal token mint
@@ -63,10 +61,9 @@ pub enum LysergicTokenizerInstruction {
 	/// 3. `[writable]` Principal token mint account
 	/// 4. `[writable]` Yield token mint account
 	/// 5. `[]` Token program
-	/// 6. `[]` System program
+    /// 6. `[]` Associated Token Program
+	/// 7. `[]` System program
 	InitializeTokenizerAndMints {
-		/// The public key of the underlying vault
-		underlying_vault: Pubkey,
 		/// The public key of the underlying mint
 		underlying_mint: Pubkey,
 		/// The public key of the principal token mint
@@ -248,7 +245,6 @@ pub fn init_lysergic_tokenizer(
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
 		&LysergicTokenizerInstruction::InitializeLysergicTokenizer {
-			underlying_vault: *underlying_vault,
 			underlying_mint: *underlying_mint,
 			principal_token_mint: *prinicpal_token_mint,
 			yield_token_mint: *yield_token_mint,
@@ -262,6 +258,7 @@ pub fn init_lysergic_tokenizer(
 			AccountMeta::new_readonly(*underlying_mint, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
 			AccountMeta::new_readonly(system_program::id(), false),
+            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
 		],
 	))
 }
@@ -305,7 +302,6 @@ pub fn init_tokenizer_and_mints(
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
 		&LysergicTokenizerInstruction::InitializeTokenizerAndMints {
-			underlying_vault: *underlying_vault,
 			underlying_mint: *underlying_mint,
 			principal_token_mint: *principal_token_mint,
 			yield_token_mint: *yield_token_mint,
@@ -321,6 +317,7 @@ pub fn init_tokenizer_and_mints(
 			AccountMeta::new(*yield_token_mint, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
 			AccountMeta::new_readonly(system_program::id(), false),
+            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
 		],
 	))
 }
