@@ -237,7 +237,7 @@ pub fn init_lysergic_tokenizer(
 	authority: &Pubkey,
 	underlying_vault: &Pubkey,
 	underlying_mint: &Pubkey,
-	prinicpal_token_mint: &Pubkey,
+	principal_token_mint: &Pubkey,
 	yield_token_mint: &Pubkey,
 	expiry: Expiry,
 	fixed_apy: u64,
@@ -246,7 +246,7 @@ pub fn init_lysergic_tokenizer(
 		crate::id(),
 		&LysergicTokenizerInstruction::InitializeLysergicTokenizer {
 			underlying_mint: *underlying_mint,
-			principal_token_mint: *prinicpal_token_mint,
+			principal_token_mint: *principal_token_mint,
 			yield_token_mint: *yield_token_mint,
 			expiry,
 			fixed_apy,
@@ -267,9 +267,9 @@ pub fn init_lysergic_tokenizer(
 pub fn init_mints(
 	lysergic_tokenizer: &Pubkey,
 	authority: &Pubkey,
+	underlying_mint: &Pubkey,
 	principal_token_mint: &Pubkey,
 	yield_token_mint: &Pubkey,
-	underlying_mint: &Pubkey,
 	expiry: Expiry,
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
@@ -281,9 +281,11 @@ pub fn init_mints(
 		vec![
 			AccountMeta::new(*lysergic_tokenizer, false),
 			AccountMeta::new(*authority, true),
+            AccountMeta::new(*underlying_mint, false),
 			AccountMeta::new(*principal_token_mint, false),
 			AccountMeta::new(*yield_token_mint, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
 		],
 	))
 }

@@ -21,6 +21,8 @@ use {
 	},
 };
 
+const MINT_SIZE: usize = 82;
+
 pub enum RedemptionMode {
 	Mature,
 	PrincipalYield,
@@ -102,9 +104,9 @@ impl LysergicTokenizerProcessor {
 
 	fn process_initialize_lysergic_tokenizer(
 		accounts: &[AccountInfo],
+		underlying_mint: Pubkey,
 		principal_token_mint: Pubkey,
 		yield_token_mint: Pubkey,
-		underlying_mint: Pubkey,
 		expiry: &Expiry,
 		fixed_apy: u64,
 	) -> ProgramResult {
@@ -127,6 +129,8 @@ impl LysergicTokenizerProcessor {
 		let (tokenizer_key, bump) =
 			get_tokenizer_address(&underlying_mint_account.key, expiry_date);
 		msg!("Tokenizer key: {:?}", tokenizer_key);
+		let (principal_mint, _) = get_principal_mint_address(&tokenizer_key);
+		let (yield_mint, _) = get_yield_mint_address(&tokenizer_key);
 
 		// Check if lysergic tokenizer account address is correct
 		if lysergic_tokenizer_account.key != &tokenizer_key {
@@ -152,12 +156,12 @@ impl LysergicTokenizerProcessor {
 		}
 
 		// Check principal token mint address
-		if principal_token_mint != crate::get_principal_mint_address(&underlying_mint) {
+		if &principal_token_mint != &principal_mint {
 			return Err(LysergicTokenizerError::IncorrectPrincipalMintAddress.into());
 		}
 
 		// Check yield token mint address
-		if yield_token_mint != crate::get_yield_mint_address(&underlying_mint) {
+		if &yield_token_mint != &yield_mint {
 			return Err(LysergicTokenizerError::IncorrectYieldMintAddress.into());
 		}
 
@@ -264,7 +268,9 @@ impl LysergicTokenizerProcessor {
 		let principal_token_mint_account = next_account_info(account_info_iter)?;
 		let yield_token_mint_account = next_account_info(account_info_iter)?;
 		let token_program = next_account_info(account_info_iter)?;
+		let system_program = next_account_info(account_info_iter)?;
 
+		let rent = rent::Rent::get()?;
 		let timestamp = Clock::get()?.unix_timestamp;
 
 		let expiry_date = match expiry.to_expiry_date(timestamp) {
@@ -273,6 +279,8 @@ impl LysergicTokenizerProcessor {
 		};
 
 		let (tokenizer_key, bump) = get_tokenizer_address(&underlying_mint, expiry_date);
+		let (principal_mint, pbump) = get_principal_mint_address(&tokenizer_key);
+		let (yield_mint, ybump) = get_yield_mint_address(&tokenizer_key);
 
 		// General safety checks
 		if lysergic_tokenizer_account.key != &tokenizer_key {
@@ -320,18 +328,69 @@ impl LysergicTokenizerProcessor {
 				return Err(LysergicTokenizerError::IncorrectVaultAddress.into());
 			}
 		} else if lysergic_tokenizer_account.owner != &crate::id() {
-			if principal_token_mint_account.key != &get_principal_mint_address(&underlying_mint) {
+			if principal_token_mint_account.key != &principal_mint {
 				return Err(LysergicTokenizerError::IncorrectPrincipalMintAddress.into());
 			}
-			if yield_token_mint_account.key != &get_yield_mint_address(&underlying_mint) {
+			if yield_token_mint_account.key != &yield_mint {
 				return Err(LysergicTokenizerError::IncorrectYieldMintAddress.into());
 			}
 		}
 
+		let required_lamports_principal = rent
+			.minimum_balance(MINT_SIZE)
+			.max(1)
+			.saturating_sub(principal_token_mint_account.lamports());
+		let required_lamports_yield = rent
+			.minimum_balance(MINT_SIZE)
+			.max(1)
+			.saturating_sub(yield_token_mint_account.lamports());
+
+		msg!("Creating principal mint account");
+		invoke_signed(
+			&system_instruction::create_account(
+				authority.key,
+				&principal_token_mint_account.key,
+				required_lamports_principal,
+				MINT_SIZE as u64,
+				&spl_token::id(),
+			),
+			&[
+				authority.clone(),
+				principal_token_mint_account.clone(),
+				system_program.clone(),
+			],
+			&[&[
+				b"principal",
+				&lysergic_tokenizer_account.key.to_bytes()[..],
+				&[pbump],
+			]],
+		)?;
+
+		msg!("Creating yield mint account");
+		invoke_signed(
+			&system_instruction::create_account(
+				authority.key,
+				&yield_token_mint_account.key,
+				required_lamports_yield,
+				MINT_SIZE as u64,
+				&spl_token::id(),
+			),
+			&[
+				authority.clone(),
+				yield_token_mint_account.clone(),
+				system_program.clone(),
+			],
+			&[&[
+				b"yield",
+				&lysergic_tokenizer_account.key.to_bytes()[..],
+				&[ybump],
+			]],
+		)?;
+
 		msg!("Initializing principal token mint");
 		// Initialize principal token mint
 		invoke_signed(
-			&spl_token::instruction::initialize_mint(
+			&spl_token::instruction::initialize_mint2(
 				token_program.key,
 				principal_token_mint_account.key,
 				lysergic_tokenizer_account.key,
@@ -350,7 +409,7 @@ impl LysergicTokenizerProcessor {
 		msg!("Initializing yield token mint");
 		// Initialize yield token mint
 		invoke_signed(
-			&spl_token::instruction::initialize_mint(
+			&spl_token::instruction::initialize_mint2(
 				token_program.key,
 				yield_token_mint_account.key,
 				lysergic_tokenizer_account.key,
@@ -406,13 +465,14 @@ impl LysergicTokenizerProcessor {
 			principal_token_mint_account.clone(),
 			yield_token_mint_account.clone(),
 			token_program.clone(),
+			system_program.clone(),
 		];
 
 		Self::process_initialize_lysergic_tokenizer(
 			&initialize_tokenizer_accounts,
+			underlying_mint,
 			principal_token_mint,
 			yield_token_mint,
-			underlying_mint,
 			&expiry,
 			fixed_apy,
 		)?;
