@@ -237,6 +237,7 @@ impl LysergicTokenizerProcessor {
 			)?;
 
 			let lysergic_tokenizer_state = LysergicTokenizerState {
+				bump,
 				authority: *authority.key,
 				principal_token_mint,
 				yield_token_mint,
@@ -499,7 +500,7 @@ impl LysergicTokenizerProcessor {
 			return Err(LysergicTokenizerError::TokenizerNotInitialized.into());
 		}
 
-		if underlying_vault_account.owner != &crate::id() {
+		if underlying_vault_account.owner != &spl_token::id() {
 			return Err(LysergicTokenizerError::IncorrectVaultAddress.into());
 		}
 
@@ -523,6 +524,7 @@ impl LysergicTokenizerProcessor {
 			return Err(ProgramError::IncorrectProgramId);
 		}
 
+		msg!("Depositing underlying...");
 		// Transfer underlying token from user to lysergic tokenizer
 		invoke(
 			&spl_token::instruction::transfer(
@@ -556,9 +558,8 @@ impl LysergicTokenizerProcessor {
 			return Err(LysergicTokenizerError::TokenizerNotInitialized.into());
 		}
 
-		let lysergic_tokenizer_state = LysergicTokenizerState::try_from_slice(
-			&lysergic_tokenizer_account.data.borrow()[..LYSERGIC_TOKENIZER_STATE_SIZE],
-		)?;
+		let lysergic_tokenizer_state =
+			LysergicTokenizerState::try_from_slice(&lysergic_tokenizer_account.data.borrow()[..])?;
 
 		// Check to see if the expiry date has elapsed
 		if lysergic_tokenizer_state.expiry_date < clock::Clock::get()?.unix_timestamp {
@@ -583,28 +584,38 @@ impl LysergicTokenizerProcessor {
 
 		// We may want to create a principal token account for the user if it doesn't exist
 		if user_principal_token_account.owner != token_program.key {
+			msg!("No user principal account found, creating...");
 			let system_program = next_account_info(account_info_iter)?;
+			let atoken_program = next_account_info(account_info_iter)?;
 
 			if system_program.key != &system_program::id() {
+				return Err(ProgramError::IncorrectProgramId);
+			}
+
+			if atoken_program.key != &spl_associated_token_account::id() {
 				return Err(ProgramError::IncorrectProgramId);
 			}
 
 			invoke(
 				&spl_associated_token_account::instruction::create_associated_token_account(
 					user_account.key,
-					user_principal_token_account.key,
+                    user_account.key,
 					&lysergic_tokenizer_state.principal_token_mint,
-					user_account.key,
+                    token_program.key,
 				),
 				&[
+					user_account.clone(),
 					user_principal_token_account.clone(),
 					user_account.clone(),
-					lysergic_tokenizer_account.clone(),
+                    principal_token_mint_account.clone(),
+					system_program.clone(),
 					token_program.clone(),
+					atoken_program.clone(),
 				],
 			)?;
 		}
 
+		msg!("Minting principal to user...");
 		// Mint principal token to user
 		invoke_signed(
 			&spl_token::instruction::mint_to(
@@ -621,7 +632,12 @@ impl LysergicTokenizerProcessor {
 				lysergic_tokenizer_account.clone(),
 				token_program.clone(),
 			],
-			&[&[&b"lysergic-tokenizer"[..], &[0u8]]],
+			&[&[
+				b"tokenizer",
+				&lysergic_tokenizer_state.underlying_mint.to_bytes()[..],
+				&lysergic_tokenizer_state.expiry_date.to_le_bytes(),
+				&[lysergic_tokenizer_state.bump],
+			]],
 		)?;
 
 		Ok(())
@@ -639,9 +655,8 @@ impl LysergicTokenizerProcessor {
 			return Err(LysergicTokenizerError::TokenizerNotInitialized.into());
 		}
 
-		let lysergic_tokenizer_state = LysergicTokenizerState::try_from_slice(
-			&lysergic_tokenizer_account.data.borrow()[..LYSERGIC_TOKENIZER_STATE_SIZE],
-		)?;
+		let lysergic_tokenizer_state =
+			LysergicTokenizerState::try_from_slice(&lysergic_tokenizer_account.data.borrow()[..])?;
 
 		if lysergic_tokenizer_state.expiry_date < clock::Clock::get()?.unix_timestamp {
 			return Err(LysergicTokenizerError::ExpiryDateElapsed.into());
@@ -665,28 +680,38 @@ impl LysergicTokenizerProcessor {
 
 		// We may want to create a yield token account for the user if it doesn't exist
 		if user_yield_token_account.owner != token_program.key {
+			msg!("No user yield account found, creating...");
 			let system_program = next_account_info(account_info_iter)?;
+			let atoken_program = next_account_info(account_info_iter)?;
+
 			if system_program.key != &system_program::id() {
+				return Err(ProgramError::IncorrectProgramId);
+			}
+
+			if atoken_program.key != &spl_associated_token_account::id() {
 				return Err(ProgramError::IncorrectProgramId);
 			}
 
 			invoke(
 				&spl_associated_token_account::instruction::create_associated_token_account(
 					user_account.key,
-					user_yield_token_account.key,
-					&lysergic_tokenizer_state.yield_token_mint,
 					user_account.key,
+					&lysergic_tokenizer_state.yield_token_mint,
+                    token_program.key,
 				),
 				&[
+					user_account.clone(),
 					user_yield_token_account.clone(),
 					user_account.clone(),
 					yield_token_mint_account.clone(),
 					system_program.clone(),
 					token_program.clone(),
+					atoken_program.clone(),
 				],
 			)?;
 		}
 
+		msg!("Minting yield to user...");
 		// Mint yield token to user
 		invoke_signed(
 			&spl_token::instruction::mint_to(
@@ -703,7 +728,12 @@ impl LysergicTokenizerProcessor {
 				lysergic_tokenizer_account.clone(),
 				token_program.clone(),
 			],
-			&[&[&b"lysergic-tokenizer"[..], &[0u8]]],
+			&[&[
+				b"tokenizer",
+				&lysergic_tokenizer_state.underlying_mint.to_bytes()[..],
+				&lysergic_tokenizer_state.expiry_date.to_le_bytes(),
+				&[lysergic_tokenizer_state.bump],
+			]],
 		)?;
 
 		Ok(())
@@ -720,6 +750,8 @@ impl LysergicTokenizerProcessor {
 		let user_principal_token_account = next_account_info(account_info_iter)?;
 		let user_yield_token_account = next_account_info(account_info_iter)?;
 		let token_program = next_account_info(account_info_iter)?;
+		let system_program = next_account_info(account_info_iter)?;
+		let atoken_program = next_account_info(account_info_iter)?;
 
 		let deposit_accounts = [
 			lysergic_tokenizer_account.clone(),
@@ -729,12 +761,14 @@ impl LysergicTokenizerProcessor {
 			token_program.clone(),
 		];
 
-		let tokenize_prinicpal_accounts = vec![
+		let tokenize_principal_accounts = vec![
 			lysergic_tokenizer_account.clone(),
 			principal_token_mint_account.clone(),
 			user_account.clone(),
 			user_principal_token_account.clone(),
 			token_program.clone(),
+			system_program.clone(),
+			atoken_program.clone(),
 		];
 
 		let tokenize_yield_accounts = vec![
@@ -743,16 +777,19 @@ impl LysergicTokenizerProcessor {
 			user_account.clone(),
 			user_yield_token_account.clone(),
 			token_program.clone(),
+			system_program.clone(),
+			atoken_program.clone(),
 		];
 
 		Self::process_deposit_underlying(&deposit_accounts, amount)?;
-		Self::process_tokenize_principal(&tokenize_prinicpal_accounts, amount)?;
+		Self::process_tokenize_principal(&tokenize_principal_accounts, amount)?;
 		Self::process_tokenize_yield(&tokenize_yield_accounts, amount)?;
 
 		Ok(())
 	}
 
 	fn process_redeem_principal_and_yield(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+        msg!("Redeem principal and yield...");
 		let account_info_iter = &mut accounts.iter();
 		let lysergic_tokenizer_account = next_account_info(account_info_iter)?;
 		let underlying_vault_account = next_account_info(account_info_iter)?;
@@ -771,6 +808,7 @@ impl LysergicTokenizerProcessor {
 			underlying_mint_account.clone(),
 			principal_token_mint_account.clone(),
 			user_account.clone(),
+            user_underlying_token_account.clone(),
 			user_principal_token_account.clone(),
 			token_program.clone(),
 		];
@@ -805,6 +843,7 @@ impl LysergicTokenizerProcessor {
 		redemption_mode: RedemptionMode,
 		amount: u64,
 	) -> ProgramResult {
+        msg!("Redeeming principal...");
 		let account_info_iter = &mut accounts.iter();
 		let lysergic_tokenizer_account = next_account_info(account_info_iter)?;
 		let underlying_vault_account = next_account_info(account_info_iter)?;
@@ -814,15 +853,13 @@ impl LysergicTokenizerProcessor {
 		let user_underlying_token_account = next_account_info(account_info_iter)?;
 		let user_principal_token_account = next_account_info(account_info_iter)?;
 		let token_program = next_account_info(account_info_iter)?;
-		let system_program = next_account_info(account_info_iter)?;
 
 		if lysergic_tokenizer_account.owner != &crate::id() {
 			return Err(LysergicTokenizerError::TokenizerNotInitialized.into());
 		}
 
-		let lysergic_tokenizer_state = LysergicTokenizerState::try_from_slice(
-			&lysergic_tokenizer_account.data.borrow()[..LYSERGIC_TOKENIZER_STATE_SIZE],
-		)?;
+		let lysergic_tokenizer_state =
+			LysergicTokenizerState::try_from_slice(&lysergic_tokenizer_account.data.borrow()[..])?;
 
 		if let RedemptionMode::Mature = redemption_mode {
 			if lysergic_tokenizer_state.expiry_date >= clock::Clock::get()?.unix_timestamp {
@@ -830,7 +867,7 @@ impl LysergicTokenizerProcessor {
 			}
 		}
 
-		if underlying_vault_account.owner != &crate::id() {
+		if underlying_vault_account.owner != &spl_token::id() {
 			return Err(LysergicTokenizerError::IncorrectVaultAddress.into());
 		}
 
@@ -882,6 +919,7 @@ impl LysergicTokenizerProcessor {
 		// In the rather unlikely event that a user does not have an underlying token account;
 		// create one for them
 		if user_underlying_token_account.owner != token_program.key {
+			let system_program = next_account_info(account_info_iter)?;
 			if system_program.key != &system_program::id() {
 				return Err(ProgramError::IncorrectProgramId);
 			}
@@ -924,24 +962,29 @@ impl LysergicTokenizerProcessor {
 			&spl_token::instruction::transfer(
 				token_program.key,
 				underlying_vault_account.key,
-				user_principal_token_account.key,
+				user_underlying_token_account.key,
 				lysergic_tokenizer_account.key,
 				&[],
 				amount,
 			)?,
 			&[
 				underlying_vault_account.clone(),
-				underlying_mint_account.clone(),
 				user_underlying_token_account.clone(),
 				lysergic_tokenizer_account.clone(),
 			],
-			&[&[&b"lysergic-tokenizer"[..], &[0u8]]],
+			&[&[
+				b"tokenizer",
+				&underlying_mint_account.key.to_bytes()[..],
+				&lysergic_tokenizer_state.expiry_date.to_le_bytes(),
+				&[lysergic_tokenizer_state.bump],
+			]],
 		)?;
 
 		Ok(())
 	}
 
 	fn process_claim_yield(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+        msg!("Claiming yield...");
 		let account_info_iter = &mut accounts.iter();
 		let lysergic_tokenizer_account = next_account_info(account_info_iter)?;
 		let underlying_vault_account = next_account_info(account_info_iter)?;
@@ -956,11 +999,10 @@ impl LysergicTokenizerProcessor {
 			return Err(LysergicTokenizerError::TokenizerNotInitialized.into());
 		}
 
-		let lysergic_tokenizer_state = LysergicTokenizerState::try_from_slice(
-			&lysergic_tokenizer_account.data.borrow()[..LYSERGIC_TOKENIZER_STATE_SIZE],
-		)?;
+		let lysergic_tokenizer_state =
+			LysergicTokenizerState::try_from_slice(&lysergic_tokenizer_account.data.borrow()[..])?;
 
-		if underlying_vault_account.owner != &crate::id() {
+		if underlying_vault_account.owner != &spl_token::id() {
 			return Err(LysergicTokenizerError::IncorrectVaultAddress.into());
 		}
 
@@ -1050,18 +1092,22 @@ impl LysergicTokenizerProcessor {
 			&spl_token::instruction::transfer(
 				token_program.key,
 				underlying_vault_account.key,
-				user_yield_token_account.key,
+                user_underlying_token_account.key,
 				lysergic_tokenizer_account.key,
 				&[],
 				amount,
 			)?,
 			&[
 				underlying_vault_account.clone(),
-				underlying_mint_account.clone(),
 				user_underlying_token_account.clone(),
 				lysergic_tokenizer_account.clone(),
 			],
-			&[&[&b"lysergic-tokenizer"[..], &[0u8]]],
+			&[&[
+				b"tokenizer",
+				&underlying_mint_account.key.to_bytes()[..],
+				&lysergic_tokenizer_state.expiry_date.to_le_bytes(),
+				&[lysergic_tokenizer_state.bump],
+			]],
 		)?;
 
 		Ok(())
@@ -1116,9 +1162,8 @@ impl LysergicTokenizerProcessor {
 			return Err(ProgramError::MissingRequiredSignature);
 		}
 
-		let lysergic_tokenizer_state = LysergicTokenizerState::try_from_slice(
-			&lysergic_tokenizer_account.data.borrow()[..LYSERGIC_TOKENIZER_STATE_SIZE],
-		)?;
+		let lysergic_tokenizer_state =
+			LysergicTokenizerState::try_from_slice(&lysergic_tokenizer_account.data.borrow()[..])?;
 
 		if authority.key != &lysergic_tokenizer_state.authority {
 			return Err(LysergicTokenizerError::Unauthorised.into());
@@ -1166,7 +1211,12 @@ impl LysergicTokenizerProcessor {
 				authority.clone(),
 				system_program.clone(),
 			],
-			&[&[&b"lysergic-tokenizer"[..], &[0u8]]],
+			&[&[
+				b"tokenizer",
+				&lysergic_tokenizer_state.underlying_mint.to_bytes()[..],
+				&lysergic_tokenizer_state.expiry_date.to_le_bytes(),
+				&[lysergic_tokenizer_state.bump],
+			]],
 		)?;
 
 		// Terminate the Lysergic tokenizer account
@@ -1193,9 +1243,8 @@ impl LysergicTokenizerProcessor {
 			return Err(ProgramError::MissingRequiredSignature);
 		}
 
-		let lysergic_tokenizer_state = LysergicTokenizerState::try_from_slice(
-			&lysergic_tokenizer_account.data.borrow()[..LYSERGIC_TOKENIZER_STATE_SIZE],
-		)?;
+		let lysergic_tokenizer_state =
+			LysergicTokenizerState::try_from_slice(&lysergic_tokenizer_account.data.borrow()[..])?;
 
 		if authority.key != &lysergic_tokenizer_state.authority {
 			return Err(LysergicTokenizerError::Unauthorised.into());
@@ -1235,7 +1284,12 @@ impl LysergicTokenizerProcessor {
 				lysergic_tokenizer_account.clone(),
 				token_program.clone(),
 			],
-			&[&[&b"lysergic-tokenizer"[..], &[0u8]]],
+			&[&[
+				b"tokenizer",
+				&lysergic_tokenizer_state.underlying_mint.to_bytes()[..],
+				&lysergic_tokenizer_state.expiry_date.to_le_bytes(),
+				&[lysergic_tokenizer_state.bump],
+			]],
 		)?;
 
 		invoke_signed(
@@ -1252,7 +1306,12 @@ impl LysergicTokenizerProcessor {
 				lysergic_tokenizer_account.clone(),
 				token_program.clone(),
 			],
-			&[&[&b"lysergic-tokenizer"[..], &[0u8]]],
+			&[&[
+				b"tokenizer",
+				&lysergic_tokenizer_state.underlying_mint.to_bytes()[..],
+				&lysergic_tokenizer_state.expiry_date.to_le_bytes(),
+				&[lysergic_tokenizer_state.bump],
+			]],
 		)?;
 
 		invoke_signed(
@@ -1274,7 +1333,12 @@ impl LysergicTokenizerProcessor {
 				authority.clone(),
 				system_program.clone(),
 			],
-			&[&[&b"lysergic-tokenizer"[..], &[0u8]]],
+			&[&[
+				b"tokenizer",
+				&lysergic_tokenizer_state.underlying_mint.to_bytes()[..],
+				&lysergic_tokenizer_state.expiry_date.to_le_bytes(),
+				&[lysergic_tokenizer_state.bump],
+			]],
 		)?;
 
 		Ok(())

@@ -61,7 +61,7 @@ pub enum LysergicTokenizerInstruction {
 	/// 3. `[writable]` Principal token mint account
 	/// 4. `[writable]` Yield token mint account
 	/// 5. `[]` Token program
-    /// 6. `[]` Associated Token Program
+	/// 6. `[]` Associated Token Program
 	/// 7. `[]` System program
 	InitializeTokenizerAndMints {
 		/// The public key of the underlying mint
@@ -258,7 +258,7 @@ pub fn init_lysergic_tokenizer(
 			AccountMeta::new_readonly(*underlying_mint, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
 			AccountMeta::new_readonly(system_program::id(), false),
-            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
+			AccountMeta::new_readonly(spl_associated_token_account::id(), false),
 		],
 	))
 }
@@ -281,11 +281,11 @@ pub fn init_mints(
 		vec![
 			AccountMeta::new(*lysergic_tokenizer, false),
 			AccountMeta::new(*authority, true),
-            AccountMeta::new(*underlying_mint, false),
+			AccountMeta::new(*underlying_mint, false),
 			AccountMeta::new(*principal_token_mint, false),
 			AccountMeta::new(*yield_token_mint, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(system_program::id(), false),
+			AccountMeta::new_readonly(system_program::id(), false),
 		],
 	))
 }
@@ -319,7 +319,7 @@ pub fn init_tokenizer_and_mints(
 			AccountMeta::new(*yield_token_mint, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
 			AccountMeta::new_readonly(system_program::id(), false),
-            AccountMeta::new_readonly(spl_associated_token_account::id(), false),
+			AccountMeta::new_readonly(spl_associated_token_account::id(), false),
 		],
 	))
 }
@@ -363,6 +363,7 @@ pub fn tokenize_principal(
 			AccountMeta::new(*user_principal_token_account, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
 			AccountMeta::new_readonly(system_program::id(), false),
+			AccountMeta::new_readonly(spl_associated_token_account::id(), false),
 		],
 	))
 }
@@ -385,6 +386,7 @@ pub fn tokenize_yield(
 			AccountMeta::new(*user_yield_token_account, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
 			AccountMeta::new_readonly(system_program::id(), false),
+			AccountMeta::new_readonly(spl_associated_token_account::id(), false),
 		],
 	))
 }
@@ -415,6 +417,7 @@ pub fn deposit_and_tokenize(
 			AccountMeta::new(*user_yield_token_account, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
 			AccountMeta::new_readonly(system_program::id(), false),
+			AccountMeta::new_readonly(spl_associated_token_account::id(), false),
 		],
 	))
 }
