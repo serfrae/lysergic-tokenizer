@@ -10,7 +10,7 @@ use {
 };
 
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum LysergicTokenizerError {
+pub enum TokenizerError {
 	#[error("Invalid Instruction")]
 	InvalidInstruction,
 	#[error("Tokenizer Already Initialized")]
@@ -43,19 +43,19 @@ pub enum LysergicTokenizerError {
 	VaultNotEmpty,
 }
 
-impl From<LysergicTokenizerError> for ProgramError {
-	fn from(e: LysergicTokenizerError) -> Self {
+impl From<TokenizerError> for ProgramError {
+	fn from(e: TokenizerError) -> Self {
 		ProgramError::Custom(e as u32)
 	}
 }
 
-impl<T> DecodeError<T> for LysergicTokenizerError {
+impl<T> DecodeError<T> for TokenizerError {
 	fn type_of() -> &'static str {
 		"Lysergic tokenizer error"
 	}
 }
 
-impl PrintProgramError for LysergicTokenizerError {
+impl PrintProgramError for TokenizerError {
 	fn print<E>(&self)
 	where
 		E: 'static + std::error::Error + DecodeError<E> + FromPrimitiveTrait + PrintProgramError,

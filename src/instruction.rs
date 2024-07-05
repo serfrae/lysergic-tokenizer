@@ -11,18 +11,18 @@ use {
 };
 
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema, Debug, PartialEq)]
-pub enum LysergicTokenizerInstruction {
-	/// Initializes the LysergicTokenizer
+pub enum TokenizerInstruction {
+	/// Initializes the Tokenizer
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable, signer]` Authority
 	/// 2. `[writable]` Underlying vault account
 	/// 3. `[]` Underlying mint account
 	/// 4. `[]` Token program
 	/// 5. `[]` System program
-	InitializeLysergicTokenizer {
+	InitializeTokenizer {
 		/// The public key of the underlying mint
 		underlying_mint: Pubkey,
 		/// The public key of the principal token mint
@@ -39,7 +39,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable, signer]` Authority
 	/// 2. `[writable]` Principal token mint account
 	/// 3. `[writable]` Yield token mint account
@@ -55,7 +55,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable,signer]` Authority
 	/// 2. `[writable]` Underlying vault account
 	/// 3. `[writable]` Principal token mint account
@@ -80,7 +80,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable]` Underlying vault account
 	/// 2. `[writable, signer]` User account
 	/// 3. `[writable]` User underlying token account
@@ -94,7 +94,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable]` Principal token mint account
 	/// 2. `[writable, signer]` User account
 	/// 3. `[writable]` User principal token account
@@ -108,7 +108,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable]` Yield token mint account
 	/// 2. `[writable, signer]` User account
 	/// 3. `[writable]` User yield token account
@@ -123,7 +123,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable]` Underlying vault account
 	/// 2. `[writable]` Principal token mint account
 	/// 3. `[writable]` Yield token mint account
@@ -142,7 +142,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable]` Underlying vault account
 	/// 2. `[]` Underlying mint account
 	/// 3. `[writable]` Principal token mint account
@@ -159,7 +159,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable]` Underlying vault account
 	/// 2. `[]` Underlying mint account
 	/// 3. `[writable]` Principal token mint account
@@ -177,7 +177,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable]` Yield token mint account
 	/// 2. `[writable]` Underlying vault account
 	/// 3. `[writable, signer]` User account
@@ -194,7 +194,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable, signer]` Authority
 	/// 2. `[writable]` Underlying vault account
 	/// 3. `[writable]` Principal token mint account
@@ -203,18 +203,18 @@ pub enum LysergicTokenizerInstruction {
 	/// 6. `[]` System program
 	Terminate,
 
-	/// Terminates the LysergicTokenizer
+	/// Terminates the Tokenizer 
 	/// Should only be called AFTER the mints have been terminated
 	/// as the tokenizer is the owner of the mints
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable, signer]` Authority
 	/// 2. `[writable]` Underlying vault account
 	/// 3. `[]` Token Program
 	/// 4. `[]` System Program
-	TerminateLysergicTokenizer,
+	TerminateTokenizer,
 
 	/// Terminates the Mints associated with the LysergicTokenizer
 	/// This function cannot be called unless the LysergicTokenizer HAS NOT
@@ -222,7 +222,7 @@ pub enum LysergicTokenizerInstruction {
 	///
 	/// Accounts expected:
 	///
-	/// 0. `[writable]` LysergicTokenizer account
+	/// 0. `[writable]` Tokenizer account
 	/// 1. `[writable, signer]` Authority
 	/// 2. `[writable]` Principal token mint account
 	/// 3. `[writable]` Yield token mint account
@@ -231,9 +231,9 @@ pub enum LysergicTokenizerInstruction {
 	TerminateMints,
 }
 
-/// Creates an `InitializeLysergicTokenizer` instruction
-pub fn init_lysergic_tokenizer(
-	lysergic_tokenizer: &Pubkey,
+/// Creates an `InitializeTokenizer` instruction
+pub fn init_tokenizer(
+	tokenizer: &Pubkey,
 	authority: &Pubkey,
 	underlying_vault: &Pubkey,
 	underlying_mint: &Pubkey,
@@ -244,7 +244,7 @@ pub fn init_lysergic_tokenizer(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::InitializeLysergicTokenizer {
+		&TokenizerInstruction::InitializeTokenizer {
 			underlying_mint: *underlying_mint,
 			principal_token_mint: *principal_token_mint,
 			yield_token_mint: *yield_token_mint,
@@ -252,7 +252,7 @@ pub fn init_lysergic_tokenizer(
 			fixed_apy,
 		},
 		vec![
-			AccountMeta::new(*lysergic_tokenizer, false),
+			AccountMeta::new(*tokenizer, false),
 			AccountMeta::new(*authority, true),
 			AccountMeta::new(*underlying_vault, false),
 			AccountMeta::new_readonly(*underlying_mint, false),
@@ -274,7 +274,7 @@ pub fn init_mints(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::InitializeMints {
+		&TokenizerInstruction::InitializeMints {
 			underlying_mint: *underlying_mint,
 			expiry,
 		},
@@ -292,7 +292,7 @@ pub fn init_mints(
 
 /// Creates an `InitializeTokenizerAndMints` instruction
 pub fn init_tokenizer_and_mints(
-	lysergic_tokenizer: &Pubkey,
+	tokenizer: &Pubkey,
 	authority: &Pubkey,
 	underlying_vault: &Pubkey,
 	underlying_mint: &Pubkey,
@@ -303,7 +303,7 @@ pub fn init_tokenizer_and_mints(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::InitializeTokenizerAndMints {
+		&TokenizerInstruction::InitializeTokenizerAndMints {
 			underlying_mint: *underlying_mint,
 			principal_token_mint: *principal_token_mint,
 			yield_token_mint: *yield_token_mint,
@@ -311,7 +311,7 @@ pub fn init_tokenizer_and_mints(
 			fixed_apy,
 		},
 		vec![
-			AccountMeta::new(*lysergic_tokenizer, false),
+			AccountMeta::new(*tokenizer, false),
 			AccountMeta::new(*authority, true),
 			AccountMeta::new(*underlying_vault, false),
 			AccountMeta::new_readonly(*underlying_mint, false),
@@ -326,7 +326,7 @@ pub fn init_tokenizer_and_mints(
 
 /// Creates a `DepositUnderlying` instruction
 pub fn deposit_underlying(
-	lysergic_tokenizer: &Pubkey,
+	tokenizer: &Pubkey,
 	underlying_vault: &Pubkey,
 	user: &Pubkey,
 	user_underlying_token_account: &Pubkey,
@@ -334,9 +334,9 @@ pub fn deposit_underlying(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::DepositUnderlying { amount },
+		&TokenizerInstruction::DepositUnderlying { amount },
 		vec![
-			AccountMeta::new(*lysergic_tokenizer, false),
+			AccountMeta::new(*tokenizer, false),
 			AccountMeta::new(*underlying_vault, false),
 			AccountMeta::new(*user, true),
 			AccountMeta::new(*user_underlying_token_account, false),
@@ -355,7 +355,7 @@ pub fn tokenize_principal(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::TokenizePrincipal { amount },
+		&TokenizerInstruction::TokenizePrincipal { amount },
 		vec![
 			AccountMeta::new(*lysergic_tokenizer, false),
 			AccountMeta::new(*principal_token_mint, false),
@@ -378,7 +378,7 @@ pub fn tokenize_yield(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::TokenizeYield { amount },
+		&TokenizerInstruction::TokenizeYield { amount },
 		vec![
 			AccountMeta::new(*lysergic_tokenizer, false),
 			AccountMeta::new(*yield_token_mint, false),
@@ -393,7 +393,7 @@ pub fn tokenize_yield(
 
 /// Creates a `DepositAndTokenize` instruction
 pub fn deposit_and_tokenize(
-	lysergic_tokenizer: &Pubkey,
+	tokenizer: &Pubkey,
 	underlying_vault: &Pubkey,
 	principal_token_mint: &Pubkey,
 	yield_token_mint: &Pubkey,
@@ -405,9 +405,9 @@ pub fn deposit_and_tokenize(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::DepositAndTokenize { amount },
+		&TokenizerInstruction::DepositAndTokenize { amount },
 		vec![
-			AccountMeta::new(*lysergic_tokenizer, false),
+			AccountMeta::new(*tokenizer, false),
 			AccountMeta::new(*underlying_vault, false),
 			AccountMeta::new(*principal_token_mint, false),
 			AccountMeta::new(*yield_token_mint, false),
@@ -424,7 +424,7 @@ pub fn deposit_and_tokenize(
 
 /// Creates a `RedeemPrincipal` instruction
 pub fn redeem_mature_principal(
-	lysergic_tokenizer: &Pubkey,
+	tokenizer: &Pubkey,
 	underlying_vault: &Pubkey,
 	underlying_mint: &Pubkey,
 	principal_token_mint: &Pubkey,
@@ -435,9 +435,9 @@ pub fn redeem_mature_principal(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::RedeemMaturePrincipal { principal_amount },
+		&TokenizerInstruction::RedeemMaturePrincipal { principal_amount },
 		vec![
-			AccountMeta::new(*lysergic_tokenizer, false),
+			AccountMeta::new(*tokenizer, false),
 			AccountMeta::new(*underlying_vault, false),
 			AccountMeta::new_readonly(*underlying_mint, false),
 			AccountMeta::new(*principal_token_mint, false),
@@ -452,7 +452,7 @@ pub fn redeem_mature_principal(
 
 /// Creates a `RedeemPrincipalAndYield` instruction
 pub fn redeem_principal_and_yield(
-	lysergic_tokenizer: &Pubkey,
+	tokenizer: &Pubkey,
 	underlying_vault: &Pubkey,
 	underlying_mint: &Pubkey,
 	principal_token_mint: &Pubkey,
@@ -465,9 +465,9 @@ pub fn redeem_principal_and_yield(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::RedeemPrincipalAndYield { amount },
+		&TokenizerInstruction::RedeemPrincipalAndYield { amount },
 		vec![
-			AccountMeta::new(*lysergic_tokenizer, false),
+			AccountMeta::new(*tokenizer, false),
 			AccountMeta::new(*underlying_vault, false),
 			AccountMeta::new_readonly(*underlying_mint, false),
 			AccountMeta::new(*principal_token_mint, false),
@@ -484,7 +484,7 @@ pub fn redeem_principal_and_yield(
 
 /// Creates a `ClaimYield` instruction
 pub fn claim_yield(
-	lysergic_tokenizer: &Pubkey,
+	tokenizer: &Pubkey,
 	underlying_vault: &Pubkey,
 	yield_token_mint: &Pubkey,
 	user: &Pubkey,
@@ -494,9 +494,9 @@ pub fn claim_yield(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::ClaimYield { yield_amount },
+		&TokenizerInstruction::ClaimYield { yield_amount },
 		vec![
-			AccountMeta::new(*lysergic_tokenizer, false),
+			AccountMeta::new(*tokenizer, false),
 			AccountMeta::new(*underlying_vault, false),
 			AccountMeta::new(*yield_token_mint, false),
 			AccountMeta::new(*user, true),
@@ -508,7 +508,7 @@ pub fn claim_yield(
 }
 
 pub fn terminate(
-	lysergic_tokenizer: &Pubkey,
+	tokenizer: &Pubkey,
 	authority: &Pubkey,
 	underlying_vault: &Pubkey,
 	principal_token_mint: &Pubkey,
@@ -516,9 +516,9 @@ pub fn terminate(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::Terminate,
+		&TokenizerInstruction::Terminate,
 		vec![
-			AccountMeta::new(*lysergic_tokenizer, false),
+			AccountMeta::new(*tokenizer, false),
 			AccountMeta::new(*authority, true),
 			AccountMeta::new(*underlying_vault, false),
 			AccountMeta::new(*principal_token_mint, false),
@@ -529,16 +529,16 @@ pub fn terminate(
 	))
 }
 
-pub fn terminate_lysergic_tokenizer(
-	lysergic_tokenizer: &Pubkey,
+pub fn terminate_tokenizer(
+	tokenizer: &Pubkey,
 	authority: &Pubkey,
 	underlying_vault: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::TerminateLysergicTokenizer,
+		&TokenizerInstruction::TerminateTokenizer,
 		vec![
-			AccountMeta::new(*lysergic_tokenizer, false),
+			AccountMeta::new(*tokenizer, false),
 			AccountMeta::new(*authority, true),
 			AccountMeta::new(*underlying_vault, false),
 			AccountMeta::new_readonly(spl_token::id(), false),
@@ -555,7 +555,7 @@ pub fn terminate_mints(
 ) -> Result<Instruction, ProgramError> {
 	Ok(Instruction::new_with_borsh(
 		crate::id(),
-		&LysergicTokenizerInstruction::TerminateMints,
+		&TokenizerInstruction::TerminateMints,
 		vec![
 			AccountMeta::new(*lysergic_tokenizer, false),
 			AccountMeta::new(*authority, true),

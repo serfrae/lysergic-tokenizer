@@ -1,5 +1,5 @@
 [package]
-name = "lysergic-tokenizer"
+name = "scalar-tokenizer"
 authors = ["Andrew Fraser<a@serfrae.com>"]
 version = "0.1.0"
 edition = "2021"
@@ -18,5 +18,5 @@ thiserror = "1.0.61"
 solana-program-test = "2.0.1"
 
 [lib]
-name = "lyst"
+name = "sclr_token"
 crate-type = ["cdylib", "lib"]

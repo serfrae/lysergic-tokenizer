@@ -3,10 +3,10 @@ use {
 	solana_program::pubkey::Pubkey,
 };
 
-pub const LYSERGIC_TOKENIZER_STATE_SIZE: usize = 1 + 32 + 32 + 32 + 32 + 32 + 8 + 8; // 184 bytes
+pub const STATE_SIZE: usize = 1 + 32 + 32 + 32 + 32 + 32 + 8 + 8; // 184 bytes
 
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema, Debug, PartialEq)]
-pub struct LysergicTokenizerState {
+pub struct TokenizerState {
     pub bump: u8,
 	pub authority: Pubkey,
 	pub principal_token_mint: Pubkey,
