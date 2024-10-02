@@ -1,0 +1,23 @@
+[package]
+name = "scalar-cli"
+authors = ["Andrew Fraser <a@serfrae.com>"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+scalar-tokenizer = { version = "0.1.0", path = "../tokenizer" }
+anyhow = "1.0.86"
+borsh = {version = "1.5.1", features = ["derive"]}
+clap = {version = "4.5.7", features = ["cargo", "derive"]}
+serde = {version = "1.0.203", features = ["derive"]}
+solana-cli-config = "2.0.1"
+solana-client = "2.0.1"
+solana-sdk = "2.0.1"
+spl-associated-token-account = "4.0.0"
+spl-token = "6.0.0"
+chrono = "0.4.38"
+solana-program = "2.0.1"
+
+[[bin]]
+name = "sclr"
+path = "src/main.rs"
